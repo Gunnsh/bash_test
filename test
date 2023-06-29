@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# define some variables
+today=`date +%d_%m_%Y`
+if [[ -z $1 ]]
+then
+	set -- "default_name_server"
+fi
+runlist="$1"_"$today"_running.out
+erlist="$1"_"$today"_failed.out
+report="$1"_"$today"_report.out
+
+# download general list
+wget -q https://raw.githubusercontent.com/GreatMedivack/files/master/list.out
+
+# create server lists
+while read line
+do
+	status=`echo $line | cut -d " " -f 3`
+	if [[ $status == "Running" ]]
+	then
+		echo $line | cut -d " " -f 1 | sed -E -e 's/-[0-9a-z]+[0-9a-z]+$//' -e 's/-[0-9a-z]+[0-9a-z]+$//' >> $runlist
+	elif [[ $status = "Error" || $status = "CrashLoopBackOff" ]]
+	then
+		echo $line | cut -d " " -f 1 | sed -E -e 's/-[0-9a-z]+[0-9a-z]+$//' -e 's/-[0-9a-z]+[0-9a-z]+$//' >> $erlist
+	fi
+done < list.out
+
+# create report
+cat > $report << EOF
+Running servers: `wc -l < $runlist`
+Failed servers: `wc -l < $erlist`
+Username: $USER
+Date: $today
+EOF
+chmod +r $report
+
+# archive
+if ls archives | grep "$1"_"$today" >/dev/null
+then
+	echo "Archive already exist."
+else
+	tar -cf archives/"$1"_"$today" $runlist $erlist $report list.out
+fi
+
+# delete files
+rm -f $runlist $erlist $report list.out
+
+# check + end
+tar -tf archives/"$1"_"$today" >/dev/null
+if [[ `echo $?` != 0 ]]
+then
+	echo "Archive is failed, try to check files!"
+else
+	echo "Script completes succesfully."
+fi
