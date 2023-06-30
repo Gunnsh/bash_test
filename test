@@ -36,10 +36,9 @@ EOF
 chmod +r $report
 
 # archive
-if ls archives | grep "$1"_"$today" >/dev/null
+exist=`ls archives | grep "$1"_"$today"`
+if [[ -z $exist ]]
 then
-	echo "Archive already exist."
-else
 	tar -cf archives/"$1"_"$today" $runlist $erlist $report list.out
 fi
 
